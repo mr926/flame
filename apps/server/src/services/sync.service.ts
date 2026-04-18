@@ -69,10 +69,13 @@ export class SyncService {
       const kc = new k8s.KubeConfig();
       kc.loadFromDefault();
       const netApi = kc.makeApiClient(k8s.NetworkingV1Api);
-      const { body } = await netApi.listIngressForAllNamespaces();
+      const listResult = await netApi.listIngressForAllNamespaces();
+      // kubernetes client v0.x returns { body } wrapper; v1.x returns the list directly
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const ingressList = (listResult as any).body ?? listResult;
 
       let synced = 0;
-      for (const ingress of body.items) {
+      for (const ingress of ingressList.items) {
         const ann = ingress.metadata?.annotations ?? {};
         const name = ann['flame.name'] ?? ingress.metadata?.name;
         const host = ingress.spec?.rules?.[0]?.host;

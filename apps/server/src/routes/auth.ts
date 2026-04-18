@@ -15,7 +15,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
         return reply.code(409).send({ error: 'Conflict', message: 'Admin already set up', statusCode: 409 });
       }
       await authService.setup(parsed.data.username, parsed.data.password);
-      request.session.set('authenticated', true);
+      (request.session as any).authenticated = true;
       return reply.code(201).send({ data: { ok: true } });
     },
   );
@@ -32,7 +32,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
       if (!ok) {
         return reply.code(401).send({ error: 'Unauthorized', message: 'Invalid credentials', statusCode: 401 });
       }
-      request.session.set('authenticated', true);
+      (request.session as any).authenticated = true;
       return reply.send({ data: { ok: true } });
     },
   );
@@ -43,7 +43,7 @@ const authRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get('/session', async (request, reply) => {
-    const authenticated = request.session.get('authenticated') === true;
+    const authenticated = (request.session as any).authenticated === true;
     const setupRequired = !(await authService.hasAdmin());
     return reply.send({ data: { authenticated, setupRequired } });
   });

@@ -98,7 +98,9 @@ await app.register(pagesRoutes, { prefix: '/api/pages' });
 
 // Serve built frontend in production
 if (IS_PROD) {
-  const webDist = resolve(process.cwd(), '../web/dist');
+  const webDist = process.env.WEB_DIST
+    ? resolve(process.env.WEB_DIST)
+    : resolve(process.cwd(), '../web/dist');
   await app.register(fastifyStatic, {
     root: webDist,
     prefix: '/',

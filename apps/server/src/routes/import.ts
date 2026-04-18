@@ -164,6 +164,7 @@ async function doImport(srcDir: string, clearFirst = false) {
         for (const a of rows) {
           try {
             const icon = resolveIcon(a['icon'] ? String(a['icon']) : null, copiedFiles);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await db.insert(apps).values({
               name: String(a['name'] ?? 'Imported App'),
               url: String(a['url'] ?? 'http://localhost'),
@@ -177,7 +178,7 @@ async function doImport(srcDir: string, clearFirst = false) {
               source_key: null,
               created_at: now,
               updated_at: now,
-            });
+            } as any);
             counts.apps++;
           } catch (e) { errors.push(`app[${a['id']}]: ${e}`); }
         }
@@ -210,6 +211,7 @@ async function doImport(srcDir: string, clearFirst = false) {
           if (!newCatId) { errors.push(`bookmark[${b['id']}]: parent category not found`); continue; }
           try {
             const icon = resolveIcon(b['icon'] ? String(b['icon']) : null, copiedFiles);
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             await db.insert(bookmarks).values({
               category_id: newCatId,
               name: String(b['name'] ?? 'Imported'),
@@ -220,7 +222,7 @@ async function doImport(srcDir: string, clearFirst = false) {
               sort_order: Number(b['orderId'] ?? b['sort_order'] ?? 0),
               created_at: now,
               updated_at: now,
-            });
+            } as any);
             counts.bookmarks++;
           } catch (e) { errors.push(`bookmark[${b['id']}]: ${e}`); }
         }

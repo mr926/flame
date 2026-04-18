@@ -5,13 +5,13 @@ import { CreatePageSchema, UpdatePageSchema, ReorderPagesSchema } from '@flame-c
 
 const pagesRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async (request, reply) => {
-    const isAdmin = request.session.get('authenticated') === true;
+    const isAdmin = (request.session as any).authenticated === true;
     return reply.send({ data: await pagesService.findAll(isAdmin) });
   });
 
   app.get('/:slug', async (request, reply) => {
     const { slug } = request.params as { slug: string };
-    const isAdmin = request.session.get('authenticated') === true;
+    const isAdmin = (request.session as any).authenticated === true;
     const page = await pagesService.findBySlug(slug, isAdmin);
     if (!page) {
       return reply.code(404).send({ error: 'NotFound', message: 'Page not found', statusCode: 404 });

@@ -74,8 +74,8 @@ export class PagesService {
   async create(input: CreatePageInput) {
     const now = new Date().toISOString();
     const { group_ids, ...pageData } = input;
-    const [{ total }] = await db.select({ total: count() }).from(pages);
-    const sort_order = total ?? 0;
+    const countResult = await db.select({ total: count() }).from(pages);
+    const sort_order = countResult[0]?.total ?? 0;
     const [row] = await db.insert(pages).values({ ...pageData, sort_order, created_at: now, updated_at: now }).returning();
     if (!row) throw new Error('Insert failed');
     if (group_ids.length > 0) {

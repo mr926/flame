@@ -10,7 +10,8 @@ export class AuthService {
 
   async setup(username: string, password: string): Promise<void> {
     if (await this.hasAdmin()) throw new Error('Admin already exists');
-    const hash = await argon2.hash(password, { type: argon2.argon2id });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const hash = await (argon2 as any).hash(password, { type: 2 }); // 2 = argon2id
     await db.insert(users).values({ username, password_hash: hash });
   }
 
@@ -18,7 +19,8 @@ export class AuthService {
     const [user] = await db.select().from(users).limit(1);
     if (!user) return false;
     if (user.username !== username) return false;
-    return argon2.verify(user.password_hash, password, { type: argon2.argon2id });
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (argon2 as any).verify(user.password_hash, password, { type: 2 });
   }
 }
 

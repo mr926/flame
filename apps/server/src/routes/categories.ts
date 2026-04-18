@@ -5,7 +5,7 @@ import { CreateCategorySchema, UpdateCategorySchema, ReorderCategoriesSchema } f
 
 const categoriesRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async (request, reply) => {
-    const isAdmin = request.session.get('authenticated') === true;
+    const isAdmin = (request.session as any).authenticated === true;
     return reply.send({ data: await categoriesService.findAll(isAdmin) });
   });
 
