@@ -5,7 +5,8 @@ A modern, self-hosted homelab dashboard — rebuilt from scratch with a 2026 tec
 ## Features
 
 - **Apps** — pin, manage, and auto-discover your services
-- **Bookmarks** — categorized bookmark management
+- **Bookmarks** — categorized bookmark management with groups and multi-page navigation
+- **Pages** — configurable pages, each showing selected bookmark groups and/or apps
 - **Themes** — 4 built-in themes + custom theme editor
 - **Custom CSS** — inject any CSS via the UI
 - **Docker auto-discovery** — labels: `flame.name`, `flame.url`, `flame.icon`
@@ -17,81 +18,13 @@ A modern, self-hosted homelab dashboard — rebuilt from scratch with a 2026 tec
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 19, TypeScript, Vite, TanStack Query, Zustand, react-hook-form, Tailwind CSS v4 |
+| Frontend | React 19, TypeScript, Vite, TanStack Query, Zustand, Tailwind CSS v4 |
 | Routing | React Router 7 |
 | Backend | Fastify 5, TypeScript |
 | ORM | Drizzle ORM |
 | Database | SQLite (better-sqlite3) |
 | Auth | Argon2id + @fastify/session |
-| Logging | pino |
-| Tests | Vitest + Playwright |
 | Package manager | pnpm (monorepo) |
-
-## Project Structure
-
-```
-flame-claude/
-├── apps/
-│   ├── web/               # React frontend (Vite)
-│   └── server/            # Fastify backend
-│       ├── src/
-│       │   ├── db/        # Drizzle schema + client + migrate
-│       │   ├── routes/    # One file per resource
-│       │   ├── services/  # Business logic
-│       │   └── middleware/
-│       └── drizzle/       # Generated SQL migrations
-├── packages/
-│   └── shared/            # Zod schemas + types shared by both apps
-├── data/                  # Runtime data (gitignored)
-│   ├── flame.db           # SQLite database
-│   └── uploads/           # Uploaded icons
-├── Dockerfile
-└── docker-compose.yml
-```
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js 22+
-- pnpm 9+
-
-### Install dependencies
-
-```bash
-pnpm install
-```
-
-### Run in development
-
-```bash
-pnpm dev
-# Web: http://localhost:3000
-# API: http://localhost:5005
-```
-
-The dev web server proxies `/api` and `/uploads` to the backend automatically.
-
-### Run database migrations
-
-Migrations are applied automatically on server startup. To run manually:
-
-```bash
-pnpm db:migrate
-```
-
-### Build for production
-
-```bash
-pnpm build
-```
-
-### Run production build locally
-
-```bash
-cd apps/server
-NODE_ENV=production node dist/main.js
-```
 
 ## Docker Deployment
 
@@ -103,14 +36,48 @@ docker compose up -d
 
 Then open `http://localhost:5005` and set your admin password.
 
+### docker-compose.yml (full example)
+
+```yaml
+services:
+  flame:
+    image: mr926/flame:latest
+    container_name: flame
+    restart: unless-stopped
+
+    ports:
+      - "5005:5005"       # Host port : container port
+
+    volumes:
+      - ./data:/data      # Persist database and uploaded icons
+      # Uncomment to enable Docker auto-discovery:
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+
+    environment:
+      # ── Required ────────────────────────────────────────────────────────────
+      SESSION_SECRET: "change-me-to-a-random-secret-at-least-32-chars"
+      # Generate one with: openssl rand -hex 32
+
+      # ── Optional (shown with defaults) ──────────────────────────────────────
+      PORT: "5005"          # HTTP port the server listens on inside the container
+      DATA_DIR: "/data"     # Directory for flame.db and uploads/
+      NODE_ENV: "production" # Set to "development" for pretty-printed logs
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5005/api/auth/session"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+```
+
 ### Environment variables
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATA_DIR` | `/data` | Where the database and uploads are stored |
-| `PORT` | `5005` | HTTP port |
-| `SESSION_SECRET` | *(insecure default)* | **Change this in production** — 32+ random chars |
-| `NODE_ENV` | `production` | Set to `development` for pretty logs |
+| `SESSION_SECRET` | *(insecure default)* | **Required in production** — random 32+ char string. Generate with `openssl rand -hex 32` |
+| `PORT` | `5005` | HTTP port the server listens on |
+| `DATA_DIR` | `/data` | Directory for `flame.db` and `uploads/` |
+| `NODE_ENV` | `production` | Set to `development` for pretty-printed pino logs |
 
 ### Data persistence
 
@@ -120,22 +87,6 @@ The `/data` volume contains:
 
 Mount it to a host path or named volume to persist across container restarts.
 
-### Docker Compose example
-
-```yaml
-services:
-  flame:
-    image: flame-claude:latest
-    ports:
-      - "5005:5005"
-    volumes:
-      - ./data:/data
-      # For Docker auto-discovery:
-      # - /var/run/docker.sock:/var/run/docker.sock:ro
-    environment:
-      SESSION_SECRET: "your-random-secret-here"
-```
-
 ## First Run — Setting the Admin Password
 
 On first visit, you'll be redirected to `/setup` to set your admin password. This page is only available when no admin exists yet.
@@ -143,14 +94,14 @@ On first visit, you'll be redirected to `/setup` to set your admin password. Thi
 ## Importing from Flame
 
 1. Go to **Settings → About → Import from Flame**
-2. Enter the path to your old Flame data directory on the server (e.g. `/old-flame/data`)
-3. Click **Start Import**
+2. Upload your Flame `data.zip` export
+3. Optionally check **Clear existing data** to start fresh
 
 The importer reads:
 - `db.sqlite` — apps, categories, bookmarks
 - `themes.json` — custom themes
 - `config.json` — settings (customCSS, tab behavior, page title)
-- `uploads/` — icon files
+- `uploads/` — icon files (including custom SVGs)
 
 Weather and search provider data are ignored (not supported in flame-claude).
 
@@ -187,22 +138,54 @@ The app URL is derived from the first Ingress host rule.
 
 Enable in **Settings → Integrations → Kubernetes**. The server must have access to a valid kubeconfig.
 
-## Running Tests
+## GitHub Actions — Docker Hub
 
-```bash
-# API unit/integration tests
-pnpm test
+The workflow at `.github/workflows/docker.yml` builds and pushes multi-arch images (`linux/amd64` + `linux/arm64`) to Docker Hub on every push to `main` and on version tags (`v*`).
 
-# E2E (requires both dev servers running)
-cd apps/web && pnpm test:e2e
+Required repository secrets:
+
+| Secret | Description |
+|---|---|
+| `DOCKERHUB_USERNAME` | Your Docker Hub username |
+| `DOCKERHUB_TOKEN` | Docker Hub access token (Settings → Security → Access Tokens) |
+
+Tags produced:
+- `latest` — every push to `main`
+- `v1.2.3` — on tag `v1.2.3`
+- `v1.2` — on tag `v1.2.3`
+
+## Project Structure
+
+```
+flame-claude/
+├── apps/
+│   ├── web/               # React frontend (Vite)
+│   └── server/            # Fastify backend
+│       ├── src/
+│       │   ├── db/        # Drizzle schema + client + migrate
+│       │   ├── routes/    # One file per resource
+│       │   ├── services/  # Business logic
+│       │   └── middleware/
+│       └── drizzle/       # SQL migrations
+├── packages/
+│   └── shared/            # Zod schemas + types shared by both apps
+├── .github/workflows/     # CI/CD
+├── Dockerfile
+└── docker-compose.yml
 ```
 
-## Known Simplifications
+## Development
 
-- No drag-and-drop reorder UI (reorder API exists; UI uses manual sort_order editing)
-- No icon file browser (upload via form)
-- Kubernetes sync uses in-cluster or default kubeconfig; no per-cluster config UI
-- No multi-user support (by design — single admin)
+```bash
+# Install dependencies
+pnpm install
+
+# Run dev servers (web: 3000, api: 5005)
+pnpm dev
+
+# Build for production
+pnpm build
+```
 
 ## License
 
