@@ -1,0 +1,27 @@
+services:
+  flame:
+    build: .
+    image: flame-claude:latest
+    container_name: flame-claude
+    restart: unless-stopped
+    ports:
+      - "5005:5005"
+    volumes:
+      - flame_data:/data
+      # To enable Docker auto-discovery, mount the Docker socket:
+      # - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+      PORT: "5005"
+      # Change this to a random 32+ char string in production!
+      SESSION_SECRET: "change-me-to-a-random-secret-string-at-least-32-chars"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:5005/api/auth/session"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+volumes:
+  flame_data:
+    driver: local

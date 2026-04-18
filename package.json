@@ -1,0 +1,30 @@
+{
+  "name": "flame-claude",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter web dev\"",
+    "build": "pnpm --filter @flame-claude/shared build && pnpm --filter server build && pnpm --filter web build",
+    "test": "pnpm --filter server test && pnpm --filter web test",
+    "db:generate": "pnpm --filter server db:generate",
+    "db:migrate": "pnpm --filter server db:migrate"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22",
+    "pnpm": ">=9"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "argon2",
+      "better-sqlite3",
+      "esbuild",
+      "cpu-features",
+      "protobufjs",
+      "ssh2"
+    ]
+  }
+}
