@@ -47,4 +47,4 @@ ENV WEB_DIST=/app/web-dist
 
 EXPOSE 5005
 
-CMD ["node", "dist/main.js"]
+CMD ["node", "dist/apps/server/src/main.js"]
