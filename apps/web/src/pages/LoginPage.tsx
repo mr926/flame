@@ -25,7 +25,7 @@ export default function LoginPage() {
     setError('');
     try {
       await api.auth.login(data.username, data.password);
-      await qc.invalidateQueries({ queryKey: ['session'] });
+      qc.setQueryData(['session'], { authenticated: true, setupRequired: false });
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Login failed');

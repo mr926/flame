@@ -24,7 +24,7 @@ export default function SetupPage() {
     setError('');
     try {
       await api.auth.setup(data.username, data.password);
-      await qc.invalidateQueries({ queryKey: ['session'] });
+      qc.setQueryData(['session'], { authenticated: true, setupRequired: false });
       navigate('/');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Setup failed');
