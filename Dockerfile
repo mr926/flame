@@ -28,7 +28,8 @@ RUN pnpm --filter web build
 RUN pnpm --filter server exec tsc --skipLibCheck && pnpm --filter server exec tsc-alias
 
 # Deploy server with production deps only (pnpm deploy handles monorepo correctly)
-RUN pnpm --filter server deploy --prod --legacy /prod/server
+RUN pnpm --filter server deploy --prod --legacy /prod/server && \
+    cp -r /app/apps/server/dist /prod/server/dist
 
 # ---- Production stage ----
 FROM node:22-alpine AS runner
