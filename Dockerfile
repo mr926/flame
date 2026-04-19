@@ -37,7 +37,7 @@ WORKDIR /app
 
 COPY --from=builder /prod/server ./
 COPY --from=builder /app/apps/web/dist ./web-dist
-COPY --from=builder /app/apps/server/drizzle ./drizzle
+COPY --from=builder /app/apps/server/drizzle ./dist/apps/server/drizzle
 
 VOLUME ["/data"]
 ENV DATA_DIR=/data
