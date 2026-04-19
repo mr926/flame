@@ -40,6 +40,7 @@ const migrationsFolder = join(fileURLToPath(import.meta.url), '../../drizzle');
 migrate(db, { migrationsFolder });
 
 const app = Fastify({
+  trustProxy: true,
   logger: {
     transport: !IS_PROD ? { target: 'pino-pretty' } : undefined,
   },
