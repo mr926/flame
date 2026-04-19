@@ -105,7 +105,6 @@ if (IS_PROD) {
     root: webDist,
     prefix: '/',
     wildcard: false,
-    decorateReply: false,
   });
   app.setNotFoundHandler(async (_req, reply) => {
     return reply.sendFile('index.html', webDist);
