@@ -62,6 +62,7 @@ services:
       PORT: "5005"          # HTTP port the server listens on inside the container
       DATA_DIR: "/data"     # Directory for flame.db and uploads/
       NODE_ENV: "production" # Set to "development" for pretty-printed logs
+      BOOKMARK_API_TOKEN: "${BOOKMARK_API_TOKEN:-}"
 
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://localhost:5005/api/auth/session"]
@@ -78,6 +79,7 @@ services:
 | `PORT` | `5005` | HTTP port the server listens on |
 | `DATA_DIR` | `/data` | Directory for `flame.db` and `uploads/` |
 | `NODE_ENV` | `production` | Set to `development` for pretty-printed pino logs |
+| `BOOKMARK_API_TOKEN` | *(unset)* | Enables bearer-token access to the bookmark API and category list |
 
 ### Data persistence
 
@@ -90,6 +92,33 @@ Mount it to a host path or named volume to persist across container restarts.
 ## First Run — Setting the Admin Password
 
 On first visit, you'll be redirected to `/setup` to set your admin password. This page is only available when no admin exists yet.
+
+## 用 Codex 管理收藏夹
+
+1. 用 `openssl rand -hex 32` 生成令牌。在运行 Flame 的服务器上，把它设为 `BOOKMARK_API_TOKEN`。使用本仓库的 Docker Compose 时，可以写入 Compose 同目录的 `.env`。使用 NAS 的容器管理界面时，设置同名容器环境变量。
+2. 用包含此功能的版本运行 Flame。使用本仓库的 Docker Compose 时，执行 `docker compose up -d --build`。
+3. 在 Codex 能调用的终端环境中设置 `FLAME_URL` 和 `BOOKMARK_API_TOKEN`。前者是 Flame 的访问地址，例如 `https://flame.example.com`，后者与服务端一致。把变量名和接口路径告诉 Codex，令牌留在环境变量里。若跨主机访问，请使用 HTTPS。
+
+请求头为 `Authorization: Bearer <token>`。令牌可以读取公开和私有的分类与书签，并新增、编辑、删除书签。停用或更换令牌后，重建容器使配置生效。
+
+| 操作 | 方法和路径 | 参数 |
+| --- | --- | --- |
+| 查分类 | `GET /api/categories` | 返回分类 ID 和名称 |
+| 查书签 | `GET /api/bookmarks` | 可加 `?category_id=1` 按分类筛选 |
+| 新增书签 | `POST /api/bookmarks` | JSON 必填 `category_id`、`name`、`url`。可显式传 `is_public: false` 创建私有书签，省略时默认公开 |
+| 编辑书签 | `PATCH /api/bookmarks/:id` | JSON 只传想改的字段。修改 `category_id` 可以移动到其他分类 |
+| 删除书签 | `DELETE /api/bookmarks/:id` | 使用书签 ID，成功返回 `204` |
+
+例如先查询分类，再用实际分类 ID 创建一条私有书签。
+
+```bash
+curl --fail-with-body -sS -H "Authorization: Bearer $BOOKMARK_API_TOKEN" \
+  "$FLAME_URL/api/categories"
+
+curl --fail-with-body -sS -H "Authorization: Bearer $BOOKMARK_API_TOKEN" \
+  -H 'Content-Type: application/json' -X POST "$FLAME_URL/api/bookmarks" \
+  -d '{"category_id":1,"name":"Flame","url":"https://github.com/mr926/flame","is_public":false}'
+```
 
 ## Importing from Flame
 

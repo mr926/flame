@@ -1,12 +1,14 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { categoriesService } from '../services/categories.service.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { hasBookmarkToken, requireAdmin } from '../middleware/auth.js';
 import { CreateCategorySchema, UpdateCategorySchema, ReorderCategoriesSchema } from '@flame-claude/shared';
 
 const categoriesRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async (request, reply) => {
-    const isAdmin = (request.session as any).authenticated === true;
-    return reply.send({ data: await categoriesService.findAll(isAdmin) });
+    const canReadPrivate = (request.session as any).authenticated === true || hasBookmarkToken(request);
+    reply.header('Cache-Control', 'private, no-store');
+    if (request.headers.authorization && !canReadPrivate) return requireAdmin(request, reply);
+    return reply.send({ data: await categoriesService.findAll(canReadPrivate) });
   });
 
   app.post('/', { preHandler: requireAdmin }, async (request, reply) => {

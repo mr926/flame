@@ -1,20 +1,22 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { bookmarksService } from '../services/bookmarks.service.js';
-import { requireAdmin } from '../middleware/auth.js';
+import { hasBookmarkToken, requireAdmin, requireBookmarkAccess } from '../middleware/auth.js';
 import { CreateBookmarkSchema, UpdateBookmarkSchema, ReorderBookmarksSchema } from '@flame-claude/shared';
 
 const bookmarksRoutes: FastifyPluginAsync = async (app) => {
   app.get('/', async (request, reply) => {
-    const isAdmin = (request.session as any).authenticated === true;
+    const canReadPrivate = (request.session as any).authenticated === true || hasBookmarkToken(request);
+    reply.header('Cache-Control', 'private, no-store');
+    if (request.headers.authorization && !canReadPrivate) return requireAdmin(request, reply);
     const { category_id } = request.query as { category_id?: string };
     const data = await bookmarksService.findAll(
-      isAdmin,
+      canReadPrivate,
       category_id !== undefined ? parseInt(category_id, 10) : undefined,
     );
     return reply.send({ data });
   });
 
-  app.post('/', { preHandler: requireAdmin }, async (request, reply) => {
+  app.post('/', { preHandler: requireBookmarkAccess }, async (request, reply) => {
     const parsed = CreateBookmarkSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: 'ValidationError', message: parsed.error.message, statusCode: 400 });
@@ -22,7 +24,7 @@ const bookmarksRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send({ data: await bookmarksService.create(parsed.data) });
   });
 
-  app.patch('/:id', { preHandler: requireAdmin }, async (request, reply) => {
+  app.patch('/:id', { preHandler: requireBookmarkAccess }, async (request, reply) => {
     const { id } = request.params as { id: string };
     const parsed = UpdateBookmarkSchema.safeParse(request.body);
     if (!parsed.success) {
@@ -35,7 +37,7 @@ const bookmarksRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
-  app.delete('/:id', { preHandler: requireAdmin }, async (request, reply) => {
+  app.delete('/:id', { preHandler: requireBookmarkAccess }, async (request, reply) => {
     const { id } = request.params as { id: string };
     await bookmarksService.delete(parseInt(id, 10));
     return reply.code(204).send();
